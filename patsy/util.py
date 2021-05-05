@@ -308,17 +308,31 @@ for complex_type in ("complex256", "complex196", "complex128"):
 else: # pragma: no cover
     assert False
 
+# JT: 2021-05-05
+for int_type in ("int8", "int32", "int64"):  # smallest to largest to make logic work
+    if hasattr(np, int_type):
+        narrowest_int = getattr(np, int_type)
+        print("narrowest_int assigned to", narrowest_int)
+        break
+else: # pragma: no cover
+    assert False
+
 def wide_dtype_for(arr):
     arr = np.asarray(arr)
     if (safe_issubdtype(arr.dtype, np.integer)
         or safe_issubdtype(arr.dtype, np.floating)):
-        return widest_float
+        # return widest_float                          # JT 2021-05-05: why would you widen all subtypes of int and float into the widest float you can?
+                                                       # interactions of ints and floats should be floats
+                                                       # interactions means multiplying columns together
+                                                       # edge cases mean losing precision
+        return narrowest_int                           # JT 2021-05-05
     elif safe_issubdtype(arr.dtype, np.complexfloating):
         return widest_complex
     raise ValueError("cannot widen a non-numeric type %r" % (arr.dtype,))
 
 def widen(arr):
-    return np.asarray(arr, dtype=wide_dtype_for(arr))
+    return np.asarray(arr, dtype=wide_dtype_for(arr))  # JT 2021-05-05: why would you first encode then widen?
+    #                                                  # safety?
 
 def test_wide_dtype_for_and_widen():
     assert np.allclose(widen([1, 2, 3]), [1, 2, 3])
